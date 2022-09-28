@@ -30,7 +30,7 @@ class User:
         :param p_id: The id of the preference to check
         :return: A boolean, True if the preference is known, False otherwise.
         """
-        return p_id in self.known_pref.keys()
+        return p_id in self.known_pref
 
     def known_pref_fields(self):
         """
