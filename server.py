@@ -64,18 +64,25 @@ def predict():
 
 	# add user preferences from the request parameters
 	user = User()
-	for i in range(5):
-		q = questions[uid][i]
-		a = int(args[str(i)])
-		user.add_pref(q, a)
-		print(f"Added pref for question '{q}' (type {type(q)} = '{a}' (type {type(a)})")
+	user.add_pref(f"{questions[uid][0]}_1", int(args["q0_1"]))
+	user.add_pref(f"{questions[uid][0]}_2", int(args["q0_2"]))
+	user.add_pref(f"{questions[uid][0]}_3", int(args["q0_3"]))
+	user.add_pref(f"{questions[uid][0]}_4", int(args["q0_4"]))
+	user.add_pref(f"{questions[uid][0]}_5", int(args["q0_5"]))
+	user.add_pref(f"{questions[uid][0]}_6", int(args["q0_6"]))
+	user.add_pref(f"{questions[uid][0]}_7", int(args["q0_7"]))
+	user.add_pref(f"{questions[uid][0]}_8", int(args["q0_8"]))
+	user.add_pref(f"{questions[uid][0]}_9", int(args["q0_9"]))
+	user.add_pref(f"{questions[uid][0]}_10", int(args["q0_10"]))
+
+	print(user.known_pref)
 
 	# make predictions
 	for i in range(3):
 		q = randint(0, total - 1)
 		q_name = data.columns[q]
 		q_text = data.iloc[0][q]
-		print(q_name, q_text)
+		print("Predicting", q_name, q_text)
 		p = pred.predict(user, q_name)
 		print(p, round(p))
 		text_out[f"p{i}"] = q_text + str(p)
@@ -92,11 +99,12 @@ def get_question(num_answers):
 		q_name = data.columns[q].split("_")[0]
 		q_text = data.iloc[0][q].split(":")[0]
 
-		if data[f"{q_name}_1"][0].find("Your Parents") >= 0 and num_answers == 10:
-			break
-		elif data[f"{q_name}_1"][0].find("Assistant Provider") >= 0 and num_answers == 5:
-			break
-		elif data[f"{q_name}_1"][0].find("No conditions") >= 0 and num_answers == 6:
-			break
+		if q_name != "Q288":
+			if data[f"{q_name}_1"][0].find("Your Parents") >= 0 and num_answers == 10:
+				break
+			elif data[f"{q_name}_1"][0].find("Assistant Provider") >= 0 and num_answers == 5:
+				break
+			elif data[f"{q_name}_1"][0].find("No conditions") >= 0 and num_answers == 6:
+				break
 		
 	return (q_name, q_text)
