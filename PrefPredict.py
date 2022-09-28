@@ -115,9 +115,12 @@ class PrefPredict:
             self.common_prefs[user1] = {}
         if user2 not in self.common_prefs[user1]:
             self.common_prefs[user1][user2] = []
-            for p_id in self.preference_ids:
-                if user1.has_pref(p_id) and user2.has_pref(p_id):
-                    self.common_prefs[user1][user2].append(p_id)
+            #for p_id in self.preference_ids:
+            #    if user1.has_pref(p_id) and user2.has_pref(p_id):
+            #        self.common_prefs[user1][user2].append(p_id)
+            for p_id in set(user1.known_pref).intersection(set(user2.known_pref)):
+                self.common_prefs[user1][user2].append(p_id)
+
         return len(self.common_prefs[user1][user2])
 
     def distance(self, user1, user2):
@@ -235,4 +238,4 @@ if __name__ == "__main__":
     ex_user.add_pref("Q67_9",1)
     ex_user.add_pref("Q67_10",2)
     #Predict the preference for the user to an unknown preference id
-    print(pred.predict(ex_user, "Q56_3"))
+    print(pred.predict(ex_user, 'Q56_3'))
