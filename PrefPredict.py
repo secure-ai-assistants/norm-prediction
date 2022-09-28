@@ -42,7 +42,7 @@ class PrefPredict:
         preference_ids = []
         for id in self.data.columns:
             #Only questions up to Q147 are related to preferences, later questions are related to demografics.
-            if id.split("_")[0].replace("Q", "")<str(148):
+            if int(id.split("_")[0].replace("Q", ""))<148:
                 preference_ids.append(id)
         return preference_ids
 
@@ -169,8 +169,8 @@ class PrefPredict:
             # If the distance is lower than the threshold, we consider the users to be similar
             if distances[user2] <= self.max_dist:
                     similarusers.append(user2)
-        # If the number of similar users is lower than the required threshold to makee predictions
-        # We add the ones that are the most similar (even if they have larger disstance than max_dist)
+        # If the number of similar users is lower than the required threshold to make predictions
+        # We add the ones that are the most similar (even if they have larger distance than max_dist)
         # Until we have enough similar users
         if len(similarusers) < self.min_users_pred:
             for i in range(self.min_users_pred-len(similarusers)):
@@ -224,8 +224,15 @@ if __name__ == "__main__":
     #Create a User instance for the user for which you want to make predictions
     ex_user = User()
     #Add the known preferences using the string preference id and an integer preference in the scale 1-5
-    ex_user.add_pref("Q12_1",1)
-    ex_user.add_pref("Q12_2",1)
-    ex_user.add_pref("Q12_3",1)
+    ex_user.add_pref("Q67_1",1)
+    ex_user.add_pref("Q67_2",2)
+    ex_user.add_pref("Q67_3",3)
+    ex_user.add_pref("Q67_4",4)
+    ex_user.add_pref("Q67_5",5)
+    ex_user.add_pref("Q67_6",4)
+    ex_user.add_pref("Q67_7",3)
+    ex_user.add_pref("Q67_8",2)
+    ex_user.add_pref("Q67_9",1)
+    ex_user.add_pref("Q67_10",2)
     #Predict the preference for the user to an unknown preference id
-    print(pred.predict(ex_user, "Q12_4"))
+    print(pred.predict(ex_user, "Q56_3"))
