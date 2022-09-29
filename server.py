@@ -45,7 +45,7 @@ def gen_questions():
 	questions[str(count)].append(q4[0])
 	text_out["q4"] = q4[1]
 
-	print("User number", count, "Sent questions", questions[str(count)])
+	print(f"{count}:  sent {questions[str(count)]}")
 	response = make_response(jsonify(text_out))
 	return response
 
@@ -60,6 +60,8 @@ def predict():
 	uid = args['uid']
 	total = data.shape[1]
 	text_out = {}
+	predict_out = f"{uid}: "
+	control_out = f"{uid}: "
 
 	user = User()
 
@@ -98,8 +100,6 @@ def predict():
 	user.add_pref(f"{questions[uid][3]}_5", int(args["q3_5"]))
 	user.add_pref(f"{questions[uid][3]}_6", int(args["q3_6"]))
 
-	print(user.known_pref)
-
 	# make predictions
 	for i in range(3):
 		while True:
@@ -108,12 +108,25 @@ def predict():
 			q_text = data.iloc[0][q]
 			if int(q_name.split("_")[0][1:]) <= 147:
 				break
-		print("Predicting", q_name, q_text)
 		p = pred.predict(user, q_name)
-		print(p, round(p))
-		text_out[f"p{i}"] = q_text + str(p)
+		predict_out += f"predict {q_name} as {p}; "
+		text_out[f"p{i}"] = f"{q_text} {str(p)}"
+	
+	# choose controls
+	for i in range(3):
+		while True:
+			q = randint(0, total - 1)
+			q_name = data.columns[q]
+			q_text = data.iloc[0][q]
+			if int(q_name.split("_")[0][1:]) <= 147:
+				break
+		p = ["True", "False"][randint(0, 1)]
+		control_out += f"control {q_name} as {p}; "
+		text_out[f"c{i}"] = f"{q_text} {str(p)}"
 
 	response = make_response(jsonify(text_out))
+	print(predict_out)
+	print(control_out)
 
 	return response
 
