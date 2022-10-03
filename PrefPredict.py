@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import math
 from User import User
 
@@ -157,6 +158,7 @@ class PrefPredict:
         :return: A list of User instances, those similar with user1 and for which
         we know their preference toward pred_pref_id
         """
+        retdis = []
         distances = {}
         similarusers = []
         # If a preference id is provided we will only check the userss for which we know that preference
@@ -172,6 +174,7 @@ class PrefPredict:
             # If the distance is lower than the threshold, we consider the users to be similar
             if distances[user2] <= self.max_dist:
                     similarusers.append(user2)
+                    retdis.append(distances[user2])
         # If the number of similar users is lower than the required threshold to make predictions
         # We add the ones that are the most similar (even if they have larger distance than max_dist)
         # Until we have enough similar users
@@ -179,10 +182,10 @@ class PrefPredict:
             for i in range(self.min_users_pred-len(similarusers)):
                 key = min(distances, key=distances.get)
                 similarusers.append(key)
-                distances.pop(key)
-        return similarusers
+                retdis.append(distances.pop(key))
+        return similarusers, retdis
 
-    def predict(self, user, pref_id):
+    def predict(self, user, pref_id, rho = 0.5, mu = 0.5, conf = True):
         """
         Given a user instance and a preference id, this function predicts the preference of the user.
         :param user: A User instance.
@@ -192,27 +195,42 @@ class PrefPredict:
         """
         # We build a list of the database users that are similar with the user and for which we know
         # their preference for pref_id.
-        similar_users = self.list_similar_users(user, pref_id)
+        similar_users, dis = self.list_similar_users(user, pref_id)
         # We gather their preferences for the targeted id and put them into a list
         ans = []
         for sim_u in similar_users:
             ans.append(sim_u.get_pref(pref_id))
         # The predicted preference is the average of those we gathered
-        return sum(ans)/float(len(ans))
+        # We also calculate the preference confidence and return it if required
+        if conf:
+            rhopart = min(1.0, sum(dis)/len(dis))
+            mupart = min(1.0, float(np.std(ans)))
+            confidence = 1 - rho * rhopart - mu * mupart
+            ret = (sum(ans)/float(len(ans)), confidence)
+        else:
+            ret = sum(ans)/float(len(ans))
+        return ret
 
-    def norm_block(self, num):
+    def norm_block(self, pred, conf):
         """
         This function transforms numeric preferences into norms. It devides the preference scale 1-5 into three
         blocks relating to prohibition, unclear preference (no norm generated), and permission.
-        :param num: An integer representing a preference in the scale 1-5
+        :param pred: A float representing a preference in [1,5]
+        :param conf: A float representing the prediction confidence in [0,1] (larger numbers mean larger confidence)
         :return: An integer 1-3, representing 1:prohibition, 2:unclear preference (no norm produced), 3:permission
         """
         block = 1
-        if num >2.5 and num <3.5:
+        if pred >2+conf and pred <4-conf:
             block = 2
-        if num > 3.5:
+        if pred > 4-conf:
             block = 3
         return block
+
+    def getUser(self, id):
+        return self.database_users[id]
+
+    def getPrefIds(self):
+        return self.preference_ids
 
 if __name__ == "__main__":
 
@@ -225,17 +243,21 @@ if __name__ == "__main__":
     #Load the dataset
     pred = PrefPredict(max_dist, min_common, min_users_prediction)
     #Create a User instance for the user for which you want to make predictions
-    ex_user = User()
+    #ex_user = User()
+    ex_user = pred.getUser(2)
     #Add the known preferences using the string preference id and an integer preference in the scale 1-5
-    ex_user.add_pref("Q67_1",1)
-    ex_user.add_pref("Q67_2",2)
-    ex_user.add_pref("Q67_3",3)
-    ex_user.add_pref("Q67_4",4)
-    ex_user.add_pref("Q67_5",5)
-    ex_user.add_pref("Q67_6",4)
-    ex_user.add_pref("Q67_7",3)
-    ex_user.add_pref("Q67_8",2)
-    ex_user.add_pref("Q67_9",1)
-    ex_user.add_pref("Q67_10",2)
+    #ex_user.add_pref("Q67_1",1)
+    #ex_user.add_pref("Q67_2",2)
+    #ex_user.add_pref("Q67_3",3)
+    #ex_user.add_pref("Q67_4",4)
+    #ex_user.add_pref("Q67_5",5)
+    #ex_user.add_pref("Q67_6",1)
+    #ex_user.add_pref("Q67_7",2)
+    #ex_user.add_pref("Q67_8",3)
+    #ex_user.add_pref("Q67_9",4)
+    #ex_user.add_pref("Q67_10",5)
     #Predict the preference for the user to an unknown preference id
-    print(pred.predict(ex_user, 'Q56_3'))
+    #print(pred.predict(ex_user, 'Q68_1'))
+    for id in pred.getPrefIds():
+        if not ex_user.has_pref(id):
+            print(str(id)+":"+str(pred.predict(ex_user, id)))
