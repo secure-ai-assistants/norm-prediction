@@ -102,15 +102,20 @@ def predict():
 
 	# make predictions
 	for i in range(3):
+		p = None
 		while True:
 			q = randint(0, total - 1)
 			q_name = data.columns[q]
 			q_text = data.iloc[0][q]
 			if int(q_name.split("_")[0][1:]) <= 147:
-				break
-		p = pred.predict(user, q_name)
-		predict_out += f"predict {q_name} as {p}; "
-		text_out[f"p{i}"] = f"{q_text} {str(p)}"
+				p = pred.predict(user, q_name)
+				if pred.norm_block(p[0], p[1]) != 2:
+					break
+		outcome = ["would not", "might", "would"][pred.norm_block(p[0], p[1])-1]
+		predict_out += f"predict {q_name} as {outcome} with confidence {p[1]}; "
+		text_out[f"p{i}"] = f"{q_text}.<br><br>We think that in this situation you <b>{outcome}</b> choose to share information as descibed above."
+		text_out[f"pname{i}"] = q_name
+		text_out[f"conf{i}"] = p[1]
 	
 	# choose controls
 	for i in range(3):
@@ -120,9 +125,9 @@ def predict():
 			q_text = data.iloc[0][q]
 			if int(q_name.split("_")[0][1:]) <= 147:
 				break
-		p = ["True", "False"][randint(0, 1)]
-		control_out += f"control {q_name} as {p}; "
-		text_out[f"c{i}"] = f"{q_text} {str(p)}"
+		outcome = ["would", "might", "would not"][randint(0, 2)]
+		control_out += f"control {q_name} as {outcome}; "
+		text_out[f"c{i}"] = f"{q_text}.<br><br>We think that in this situation you <b>{outcome}</b> choose to share information as descibed above."
 
 	response = make_response(jsonify(text_out))
 	print(predict_out)
