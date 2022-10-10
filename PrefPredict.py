@@ -185,13 +185,18 @@ class PrefPredict:
                 retdis.append(distances.pop(key))
         return similarusers, retdis
 
-    def predict(self, user, pref_id, rho = 0.5, mu = 0.5, conf = True):
+    def predict(self, user, pref_id, conf = True, rho = 0.5, mu = 0.5):
         """
         Given a user instance and a preference id, this function predicts the preference of the user.
         :param user: A User instance.
         :param pref_id: A string with the id of the targeted preference
-        :return: A float, the predicted preference in the scale 1-5
-        (1: completly unacceptable, 5:completely acceptaable)
+        :param conf: A boolean to indicate if confidence should be calculated and returned
+        :param rho: A confidence weight, specifically the weight of the distance with the similar users
+        :param mu: A confidence weight, that of the standard deviation of the aggregated preferences to make the
+        prediction
+        :return: A tuple (float, float), the first is the predicted preference in the scale 1-5
+        (1: completly unacceptable, 5:completely acceptaable), the second the confidence in 0-1 (0 meaning no
+        confidence, 1 complete confidence).
         """
         # We build a list of the database users that are similar with the user and for which we know
         # their preference for pref_id.
@@ -203,28 +208,59 @@ class PrefPredict:
         # The predicted preference is the average of those we gathered
         # We also calculate the preference confidence and return it if required
         if conf:
+            #We calculate the part referring to the weight of the distance
             rhopart = min(1.0, sum(dis)/len(dis))
+            #And the part referring to the standard deviation of the aggregated preferences
             mupart = min(1.0, float(np.std(ans)))
+            #The confidence is the weighted sum of both parts
             confidence = 1 - rho * rhopart - mu * mupart
             ret = (sum(ans)/float(len(ans)), confidence)
         else:
             ret = sum(ans)/float(len(ans))
         return ret
 
-    def norm_block(self, pred, conf):
+    def norm_predict(self, user, pref_id, useconf=True, rho=0.5, mu=0.5):
         """
         This function transforms numeric preferences into norms. It devides the preference scale 1-5 into three
         blocks relating to prohibition, unclear preference (no norm generated), and permission.
         :param pred: A float representing a preference in [1,5]
         :param conf: A float representing the prediction confidence in [0,1] (larger numbers mean larger confidence)
+        :param usecon: A boolean indicating if we should use confidence in the rediction function
+        :param rho: A confidence weight, specifically the weight of the distance with the similar users
+        :param mu: A confidence weight, that of the standard deviation of the aggregated preferences to make the
+        prediction
         :return: An integer 1-3, representing 1:prohibition, 2:unclear preference (no norm produced), 3:permission
         """
-        block = 1
-        if pred >2+conf and pred <4-conf:
-            block = 2
-        if pred > 4-conf:
-            block = 3
-        return block
+        # We build a list of the database users that are similar with the user and for which we know
+        # their preference for pref_id.
+        similar_users, dis = self.list_similar_users(user, pref_id)
+        # We gather their preferences for the targeted id and put them into a list
+        ans = []
+        for sim_u in similar_users:
+            ans.append(sim_u.get_pref(pref_id))
+        # The predicted preference is the average of those we gathered
+        pred = sum(ans) / float(len(ans))
+        # If needed for the prediction, we also calculate the confidence
+        #We calculate the part referring to the weight of the distance
+        rhopart = min(1.0, sum(dis)/len(dis))
+        #And the part referring to the standard deviation of the aggregated preferences
+        mupart = min(1.0, float(np.std(ans)))
+        #The confidence is the weighted sum of both parts
+        conf = 1 - rho * rhopart - mu * mupart
+        #We always return confidence, even if we are not using it in the formula, hence we need another variable
+        formulaconf = conf
+        if not useconf:
+            #If we are not using confidence, the prediction function would be the same as considering confiddence 0.5
+            formulaconf = 0.5
+        #If the prediction is within the neutral block of the 1-5 scale, we do not produce any norm
+        norm = None
+        if pred < 2 + formulaconf:
+            #If the prediction is within the disagree block of the scale, we produce a prohibition norm
+            norm = "Prohibition"
+        if pred > 4 - formulaconf:
+            # If the prediction is within the agree block of the scale, we produce a permission norm
+            norm = "Permission"
+        return (pred, conf, norm)
 
     def getUser(self, id):
         return self.database_users[id]
@@ -260,4 +296,4 @@ if __name__ == "__main__":
     #print(pred.predict(ex_user, 'Q68_1'))
     for id in pred.getPrefIds():
         if not ex_user.has_pref(id):
-            print(str(id)+":"+str(pred.predict(ex_user, id)))
+            print(str(id)+":"+str(pred.norm_predict(ex_user, id)))
